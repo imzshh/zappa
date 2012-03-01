@@ -237,7 +237,7 @@ zappa.app = (func) ->
       v.apply(context, [context])
 
   context.include = (p) ->
-    sub = require path.join(context.root, p)
+    sub = if typeof p == 'string' then require path.join(context.root, p) else p
     sub.include.apply(context, [context])
 
   # Register a route with express.

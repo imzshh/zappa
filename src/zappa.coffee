@@ -258,6 +258,7 @@ zappa.app = (func) ->
           session: req.session
           response: res
           next: next
+          json: -> res.json.apply res, arguments
           send: -> res.send.apply res, arguments
           redirect: -> res.redirect.apply res, arguments
           render: ->

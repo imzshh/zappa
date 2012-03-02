@@ -92,6 +92,16 @@ express.View.prototype.__defineGetter__ 'contents', ->
   p = @path.replace id + '/', ''
   fs.readFileSync p, 'utf8'
 
+# lang class for loading lang package
+class lang
+  constructor : (@dir, @culture, @context) ->
+
+  get : (name)->
+    require @dir + '/' + name + '.' + @getCulture()
+
+  getCulture : ->
+    @actualCulture ?= if typeof @culture == 'string' then @culture else @culture.call @context, @context
+
 # Takes in a function and builds express/socket.io apps based on the rules contained in it.
 zappa.app = (func) ->
   context = {id: uuid(), zappa, express}
@@ -240,6 +250,11 @@ zappa.app = (func) ->
     sub = if typeof p == 'string' then require path.join(context.root, p) else p
     sub.include.apply(context, [context])
 
+  context.lang = (culture, dir) ->
+    @_langculture = culture
+    dir ?= path.join(context.root, '/lang')
+    @_langdir = dir
+
   # Register a route with express.
   route = (r) ->
     if typeof r.handler is 'string'
@@ -267,6 +282,8 @@ zappa.app = (func) ->
             else
               for k, v of arguments[0]
                 render.apply @, [k, v]
+
+        ctx.lang = new lang context._langdir, context._langculture, ctx
 
         render = (args...) ->
           # Adds the app id to the view name so that the monkeypatched

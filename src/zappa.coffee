@@ -134,7 +134,9 @@ zappa.app = (func) ->
   for verb in ['get', 'post', 'put', 'del']
     do (verb) ->
       context[verb] = ->
-        if arguments.length > 1
+        if arguments.length > 2
+          route verb: verb, path: arguments[0], handler: Array.prototype.slice.call arguments, 1
+        else if arguments.length > 1
           route verb: verb, path: arguments[0], handler: arguments[1]
         else
           for k, v of arguments[0]
@@ -257,12 +259,8 @@ zappa.app = (func) ->
 
   # Register a route with express.
   route = (r) ->
-    if typeof r.handler is 'string'
-      app[r.verb] r.path, (req, res) ->
-        res.contentType r.contentType if r.contentType?
-        res.send r.handler
-    else
-      app[r.verb] r.path, (req, res, next) ->
+    routeHandler = (handler, contentType) ->
+      (req, res, next) ->
         ctx =
           app: app
           settings: app.settings
@@ -323,14 +321,24 @@ zappa.app = (func) ->
 
         # Go!
         switch app.settings['databag']
-          when 'this' then result = r.handler.apply(data, [ctx])
-          when 'param' then result = r.handler.apply(ctx, [data])
-          else result = r.handler.apply(ctx, [ctx])
+          when 'this' then result = handler.apply(data, [ctx])
+          when 'param' then result = handler.apply(ctx, [data])
+          else result = handler.apply(ctx, [ctx])
         
-        res.contentType(r.contentType) if r.contentType?
+        res.contentType(contentType) if contentType?
         if typeof result is 'string' then res.send result
         else return result
-  
+
+    if typeof r.handler is 'string'
+      app[r.verb] r.path, (req, res) ->
+        res.contentType r.contentType if r.contentType?
+        res.send r.handler
+    else if r.handler instanceof Array
+      for handler in r.handler
+        app[r.verb] r.path, routeHandler handler, r.contentType
+    else
+      app[r.verb] r.path, routeHandler r.handler, r.contentType
+
   # Register socket.io handlers.
   io.sockets.on 'connection', (socket) ->
     c = {}

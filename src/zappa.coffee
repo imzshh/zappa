@@ -15,6 +15,7 @@ socketio = require 'socket.io'
 jquery = fs.readFileSync(__dirname + '/../vendor/jquery-1.6.4.min.js').toString()
 sammy = fs.readFileSync(__dirname + '/../vendor/sammy-0.7.0.min.js').toString()
 uglify = require 'uglify-js'
+gzippo = require 'gzippo'
 
 # Soft dependencies:
 jsdom = null
@@ -207,6 +208,8 @@ zappa.app = (func) ->
     zappa_middleware =
       static: (p = path.join(context.root, '/public')) ->
         express.static(p)
+      staticGzip: (p = path.join(context.root, '/public'), options) ->
+        gzippo.staticGzip(p, options)
       zappa: ->
         (req, res, next) ->
           send = (code) ->
@@ -224,7 +227,10 @@ zappa.app = (func) ->
       zappa_used = yes if name is 'zappa'
       
       if zappa_middleware[name]
-        app.use zappa_middleware[name](arg)
+        if arg instanceof Array
+          app.use zappa_middleware[name].apply null, arg
+        else
+          app.use zappa_middleware[name](arg)
       else if typeof express[name] is 'function'
         app.use express[name](arg)
      

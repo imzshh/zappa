@@ -104,7 +104,7 @@ class lang
     @actualCulture ?= if typeof @culture == 'string' then @culture else @culture.call @context, @context
 
 # Takes in a function and builds express/socket.io apps based on the rules contained in it.
-zappa.app = (func) ->
+zappa.app = (func, options) ->
   context = {id: uuid(), zappa, express}
   
   context.root = path.dirname(module.parent.filename)
@@ -115,7 +115,10 @@ zappa.app = (func) ->
   helpers = {}
   postrenders = {}
   
-  app = context.app = express.createServer()
+  if options
+    app = context.app = express.createServer options
+  else
+    app = context.app = express.createServer()
   io = context.io = socketio.listen(app)
 
   # Reference to the zappa client, the value will be set later.
@@ -441,8 +444,16 @@ zappa.run = ->
         else port = (Number) a
       when 'number' then port = a
       when 'function' then root_function = a
+      when 'object'
+        options = a
+        if options.host then host = options.host
+        if options.port then port = options.port
+        if options.key
+          expressOptions =
+            key : options.key
+            cert : options.cert
 
-  zapp = zappa.app(root_function)
+  zapp = zappa.app(root_function, expressOptions)
   app = zapp.app
 
   if host then app.listen port, host
